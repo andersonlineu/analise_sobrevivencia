@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="pt" xml:lang="pt"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>Guia Prático: Como Interpretar a Saída de summary(coxph()) no R</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="index_files/libs/clipboard/clipboard.min.js"></script>
+<script src="index_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="index_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="index_files/libs/quarto-html/popper.min.js"></script>
+<script src="index_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="index_files/libs/quarto-html/anchor.min.js"></script>
+<link href="index_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="index_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="index_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="index_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="index_files/libs/bootstrap/bootstrap-67270d1595a62d14f123c043d4fb2f18.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Índice</h2>
+   
+  <ul class="collapse">
+  <li><a href="#introdução-o-que-é-o-modelo-de-cox" id="toc-introdução-o-que-é-o-modelo-de-cox" class="nav-link active" data-scroll-target="#introdução-o-que-é-o-modelo-de-cox"><span class="header-section-number">1</span> Introdução: o que é o modelo de Cox?</a></li>
+  <li><a href="#anatomia-da-saída-de-summarycoxph..." id="toc-anatomia-da-saída-de-summarycoxph..." class="nav-link" data-scroll-target="#anatomia-da-saída-de-summarycoxph..."><span class="header-section-number">2</span> Anatomia da saída de <code>summary(coxph(...))</code></a></li>
+  <li><a href="#interpretando-o-hazard-ratio-hr" id="toc-interpretando-o-hazard-ratio-hr" class="nav-link" data-scroll-target="#interpretando-o-hazard-ratio-hr"><span class="header-section-number">3</span> Interpretando o Hazard Ratio (HR)</a></li>
+  <li><a href="#os-três-testes-de-significância" id="toc-os-três-testes-de-significância" class="nav-link" data-scroll-target="#os-três-testes-de-significância"><span class="header-section-number">4</span> Os três testes de significância</a></li>
+  <li><a href="#intervalo-de-confiança-e-o-valor-de-nulidade" id="toc-intervalo-de-confiança-e-o-valor-de-nulidade" class="nav-link" data-scroll-target="#intervalo-de-confiança-e-o-valor-de-nulidade"><span class="header-section-number">5</span> Intervalo de confiança e o valor de nulidade</a></li>
+  <li><a href="#concordância-avaliando-o-poder-discriminatório-do-modelo" id="toc-concordância-avaliando-o-poder-discriminatório-do-modelo" class="nav-link" data-scroll-target="#concordância-avaliando-o-poder-discriminatório-do-modelo"><span class="header-section-number">6</span> Concordância: avaliando o poder discriminatório do modelo</a></li>
+  <li><a href="#sec-aninhados" id="toc-sec-aninhados" class="nav-link" data-scroll-target="#sec-aninhados"><span class="header-section-number">7</span> Comparando modelos aninhados</a></li>
+  <li><a href="#roteiro-rápido-de-leitura" id="toc-roteiro-rápido-de-leitura" class="nav-link" data-scroll-target="#roteiro-rápido-de-leitura"><span class="header-section-number">8</span> Roteiro rápido de leitura</a></li>
+  <li><a href="#referências" id="toc-referências" class="nav-link" data-scroll-target="#referências"><span class="header-section-number">9</span> Referências</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Outros formatos</h2><ul><li><a href="index.pdf"><i class="bi bi-file-pdf"></i>Typst</a></li><li><a href="index.docx"><i class="bi bi-file-word"></i>MS Word</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Guia Prático: Como Interpretar a Saída de <code>summary(coxph())</code> no R</h1>
+<p class="subtitle lead">Um roteiro de leitura do Modelo de Riscos Proporcionais de Cox para pesquisadores</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introdução-o-que-é-o-modelo-de-cox" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="introdução-o-que-é-o-modelo-de-cox"><span class="header-section-number">1</span> Introdução: o que é o modelo de Cox?</h2>
+<p>A função <code>coxph()</code>, do pacote <code>survival</code> do R, ajusta o <strong>Modelo de Riscos Proporcionais de Cox</strong> — o modelo de regressão mais utilizado em análise de sobrevivência. Ele modela o efeito de covariáveis sobre a função de risco (<em>hazard</em>) de um indivíduo:</p>
+<p><span class="math display">\[\lambda(t \mid \mathbf{x}) = \lambda_0(t) \exp(x_1\beta_1 + x_2\beta_2 + \dots + x_p\beta_p)\]</span></p>
+<p>Três ideias sustentam esse modelo e ajudam a entender por que ele é chamado de <strong>semiparamétrico</strong>:</p>
+<ul>
+<li><span class="math inline">\(\lambda_0(t)\)</span> é o <strong>risco basal</strong> — não se assume nenhuma distribuição estatística para ele ao longo do tempo (parte não paramétrica).</li>
+<li>As covariáveis entram de forma <strong>multiplicativa</strong> sobre o risco basal — essa é a parte paramétrica do modelo.</li>
+<li>Pressuposto central: a razão de riscos entre dois indivíduos <strong>não varia ao longo do tempo</strong> — por isso o nome “riscos proporcionais”. Este pressuposto deve sempre ser verificado (gráficos de Kaplan-Meier estratificados, resíduos de Schoenfeld — ver capítulo sobre análise de resíduos).</li>
+</ul>
+<p>Os coeficientes <span class="math inline">\(\beta\)</span> são estimados por <strong>verossimilhança parcial</strong>, um método que, a cada tempo de evento, usa apenas a informação dos indivíduos ainda sob risco naquele momento — de forma semelhante à lógica do estimador de Kaplan-Meier.</p>
+<section id="como-o-r-organiza-o-tempo-de-sobrevivência" class="level3" data-number="1.1">
+<h3 data-number="1.1" class="anchored" data-anchor-id="como-o-r-organiza-o-tempo-de-sobrevivência"><span class="header-section-number">1.1</span> Como o R organiza o tempo de sobrevivência</h3>
+<p>Antes de ajustar o modelo, o R precisa de um objeto que combine, em uma única variável, o tempo de acompanhamento e o indicador de evento. Isso é feito com a função <code>Surv()</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survival)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>tmo <span class="ot">&lt;-</span> <span class="fu">read.table</span>(<span class="st">"tmoclas.dat"</span>, <span class="at">header =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>tmo<span class="sc">$</span>sexo <span class="ot">&lt;-</span> <span class="fu">factor</span>(tmo<span class="sc">$</span>sexo)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">Surv</span>(tmo<span class="sc">$</span>os, tmo<span class="sc">$</span>status)</span></code></pre></div><button title="Copiar para a área de transferência" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Aviso</span>Atenção a um erro comum de leitura
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A <strong>primeira variável dentro de <code>Surv()</code> é o TEMPO</strong>, não o evento. No exemplo acima, <code>os</code> é o tempo (em dias) até o óbito ou até a censura, e <code>status</code> é o indicador de evento (1 = óbito, 0 = censura). O evento em si nunca é a variável de tempo — é sempre a variável binária de status.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="anatomia-da-saída-de-summarycoxph..." class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="anatomia-da-saída-de-summarycoxph..."><span class="header-section-number">2</span> Anatomia da saída de <code>summary(coxph(...))</code></h2>
+<p>Vamos usar como exemplo de referência o modelo abaixo, ajustado com as variáveis <code>idade</code> e <code>sexo</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>mod1 <span class="ot">&lt;-</span> <span class="fu">coxph</span>(y <span class="sc">~</span> idade <span class="sc">+</span> sexo, <span class="at">data =</span> tmo)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(mod1)</span></code></pre></div><button title="Copiar para a área de transferência" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<pre><code>Call:
+coxph(formula = y ~ idade + sexo, data = tmo)
+
+  n= 96, number of events= 49 
+
+          coef exp(coef) se(coef)      z Pr(&gt;|z|)
+idade -0.02167   0.97857  0.01399 -1.548    0.122
+sexo2 -0.37649   0.68626  0.32120 -1.172    0.241
+
+      exp(coef) exp(-coef) lower .95 upper .95
+idade    0.9786      1.022    0.9521     1.006
+sexo2    0.6863      1.457    0.3657     1.288
+
+Concordance= 0.568  (se = 0.047 )
+Likelihood ratio test= 2.92  on 2 df,   p=0.2
+Wald test            = 2.85  on 2 df,   p=0.2
+Score (logrank) test = 2.85  on 2 df,   p=0.2</code></pre>
+<p>A leitura dessa saída pode ser dividida em cinco blocos.</p>
+<section id="cabeçalho-call" class="level3" data-number="2.1">
+<h3 data-number="2.1" class="anchored" data-anchor-id="cabeçalho-call"><span class="header-section-number">2.1</span> Cabeçalho (<code>Call:</code>)</h3>
+<p>O R apenas repete o comando que gerou o modelo — útil para conferir se a fórmula e o banco de dados usados foram realmente os pretendidos.</p>
+</section>
+<section id="amostra-e-eventos" class="level3" data-number="2.2">
+<h3 data-number="2.2" class="anchored" data-anchor-id="amostra-e-eventos"><span class="header-section-number">2.2</span> Amostra e eventos</h3>
+<pre><code>n= 96, number of events= 49</code></pre>
+<ul>
+<li><strong>n</strong>: número total de observações (pacientes) que entraram efetivamente no modelo.</li>
+<li><strong>number of events</strong>: quantas dessas observações tiveram o evento observado (ex.: óbito). As demais foram censuradas.</li>
+</ul>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Dica</span>Recomendação
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Sempre confira esse número primeiro. Se <code>n</code> for menor que o total de linhas do banco de dados, é sinal de que o R removeu automaticamente observações com valores faltantes (<code>NA</code>) em alguma covariável — o que pode comprometer a comparação entre modelos aninhados com conjuntos de variáveis diferentes (ver <a href="#sec-aninhados" class="quarto-xref">Seção&nbsp;7</a>).</p>
+</div>
+</div>
+</section>
+<section id="tabela-de-coeficientes" class="level3" data-number="2.3">
+<h3 data-number="2.3" class="anchored" data-anchor-id="tabela-de-coeficientes"><span class="header-section-number">2.3</span> Tabela de coeficientes</h3>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 36%">
+<col style="width: 41%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Coluna</th>
+<th>O que é</th>
+<th>Como usar</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>coef</code></td>
+<td>Coeficiente da regressão de Cox (log do hazard ratio)</td>
+<td>Sinal negativo = reduz o risco; positivo = aumenta o risco</td>
+</tr>
+<tr class="even">
+<td><code>exp(coef)</code></td>
+<td><strong>Hazard Ratio (HR)</strong> — exponencial do coeficiente</td>
+<td>HR &gt; 1 = fator de risco; HR &lt; 1 = fator de proteção; HR = 1 = sem efeito</td>
+</tr>
+<tr class="odd">
+<td><code>se(coef)</code></td>
+<td>Erro-padrão do coeficiente</td>
+<td>Quanto menor, mais precisa a estimativa</td>
+</tr>
+<tr class="even">
+<td><code>z</code></td>
+<td>Estatística do <strong>Teste de Wald</strong>: <span class="math inline">\(z = \hat\beta / ep(\hat\beta)\)</span></td>
+<td>Usada para testar <span class="math inline">\(H_0: \beta = 0\)</span></td>
+</tr>
+<tr class="odd">
+<td><code>Pr(&gt;\|z\|)</code></td>
+<td>p-valor do teste de Wald</td>
+<td>Se &lt; 0,05, a variável é considerada significativa</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="tabela-de-hazard-ratios-com-intervalo-de-confiança" class="level3" data-number="2.4">
+<h3 data-number="2.4" class="anchored" data-anchor-id="tabela-de-hazard-ratios-com-intervalo-de-confiança"><span class="header-section-number">2.4</span> Tabela de Hazard Ratios com intervalo de confiança</h3>
+<pre><code>      exp(coef) exp(-coef) lower .95 upper .95
+idade    0.9786      1.022    0.9521     1.006
+sexo2    0.6863      1.457    0.3657     1.288</code></pre>
+<ul>
+<li><code>exp(coef)</code>: o hazard ratio (repetido da tabela anterior).</li>
+<li><code>exp(-coef)</code>: o inverso do HR — útil para inverter a direção da comparação entre os grupos.</li>
+<li><code>lower .95</code> / <code>upper .95</code>: limites do intervalo de confiança de 95% do hazard ratio.</li>
+</ul>
+</section>
+<section id="medidas-de-ajuste-global" class="level3" data-number="2.5">
+<h3 data-number="2.5" class="anchored" data-anchor-id="medidas-de-ajuste-global"><span class="header-section-number">2.5</span> Medidas de ajuste global</h3>
+<pre><code>Concordance= 0.568  (se = 0.047 )
+Likelihood ratio test= 2.92  on 2 df,   p=0.2
+Wald test            = 2.85  on 2 df,   p=0.2
+Score (logrank) test = 2.85  on 2 df,   p=0.2</code></pre>
+<p>Essas quatro linhas resumem a qualidade do modelo <strong>como um todo</strong> (e não de uma variável isolada). São discutidas em detalhe nas seções seguintes.</p>
+</section>
+</section>
+<section id="interpretando-o-hazard-ratio-hr" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="interpretando-o-hazard-ratio-hr"><span class="header-section-number">3</span> Interpretando o Hazard Ratio (HR)</h2>
+<p>O HR = <code>exp(coef)</code> é a informação mais importante da tabela de coeficientes. Ele expressa a razão entre o risco instantâneo de dois indivíduos que diferem em uma unidade na covariável, mantendo as demais fixas.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 36%">
+<col style="width: 63%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Valor do HR</th>
+<th>Interpretação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>HR = 1</td>
+<td>Nenhum efeito da covariável sobre o risco (valor de nulidade)</td>
+</tr>
+<tr class="even">
+<td>HR &gt; 1</td>
+<td>Fator de risco — a covariável aumenta o risco do evento</td>
+</tr>
+<tr class="odd">
+<td>HR &lt; 1</td>
+<td>Fator de proteção — a covariável reduz o risco do evento</td>
+</tr>
+</tbody>
+</table>
+<p>Applied Survival Analysis (Hosmer, Lemeshow &amp; May) traz um exemplo clássico: em um estudo com HR = 1,74 para sexo (feminino vs.&nbsp;masculino), a interpretação correta é que mulheres morrem a uma taxa cerca de 1,74 vezes maior que a dos homens ao longo do período de estudo. Uma forma alternativa — e, segundo os autores, muitas vezes mais compreensível — é expressar o HR como percentual de mudança em relação ao valor de nulidade (1):</p>
+<blockquote class="blockquote">
+<p>“a taxa de óbito entre mulheres é 74% maior do que entre homens” (em vez de “1,74 vezes maior”)</p>
+</blockquote>
+<p>A mesma lógica se aplica a efeitos protetores (HR &lt; 1) — os autores destacam que pesquisadores costumam ter mais dificuldade para interpretar esse caso. Um HR = 0,505, por exemplo, pode ser lido de duas formas equivalentes:</p>
+<ul>
+<li>“A taxa de progressão da doença no grupo tratado é 0,505 vezes a do grupo controle”; ou</li>
+<li>“A taxa de progressão da doença no grupo tratado é 49,5% menor do que no grupo controle”.</li>
+</ul>
+<section id="traduzindo-o-exemplo-do-curso" class="level3" data-number="3.1">
+<h3 data-number="3.1" class="anchored" data-anchor-id="traduzindo-o-exemplo-do-curso"><span class="header-section-number">3.1</span> Traduzindo o exemplo do curso</h3>
+<p><strong><code>idade</code></strong>: HR = 0,9786. Como o HR é menor que 1, a idade atua como um discreto fator de <strong>proteção</strong> neste modelo — a cada ano de idade a mais, o risco de óbito é multiplicado por 0,9786 (redução de ~2,1%). Porém, z = -1,548 e p = 0,122 (acima de 0,05) — não há evidência estatística suficiente de que esse efeito exista de fato na população.</p>
+<p><strong><code>sexo2</code></strong>: HR = 0,6863, também menor que 1, sugerindo ~31% menos risco no grupo “sexo2” em relação à categoria de referência. Mas z = -1,172 e p = 0,241 — <strong>não significativo</strong>.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Nota
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>O R nomeia a linha <code>sexo2</code> porque <code>sexo</code> foi transformado em <code>factor()</code>. O R sempre usa o primeiro nível como categoria de referência e cria uma linha para cada nível seguinte. Para saber qual nível é a referência, use <code>levels(tmo$sexo)</code>.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="os-três-testes-de-significância" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="os-três-testes-de-significância"><span class="header-section-number">4</span> Os três testes de significância</h2>
+<p>O R reporta três testes diferentes para avaliar a significância de coeficientes e de modelos. Todos testam, em essência, a mesma hipótese nula, mas usam abordagens matemáticas distintas — e podem, em amostras pequenas, apontar conclusões ligeiramente diferentes.</p>
+<section id="teste-de-wald" class="level3" data-number="4.1">
+<h3 data-number="4.1" class="anchored" data-anchor-id="teste-de-wald"><span class="header-section-number">4.1</span> Teste de Wald</h3>
+<p>Usado para cada coeficiente individualmente (coluna <code>z</code> / <code>Pr(&gt;|z|)</code>):</p>
+<p><span class="math display">\[H_0: \beta_j = 0 \qquad z = \hat\beta_j / ep(\hat\beta_j)\]</span></p>
+<p>É simplesmente o coeficiente dividido pelo seu erro-padrão. Quanto mais distante de zero, mais improvável é que o verdadeiro efeito seja nulo. Alguns pacotes (como o SAS) reportam o quadrado dessa estatística, que segue distribuição qui-quadrado com 1 grau de liberdade — resultado equivalente.</p>
+</section>
+<section id="teste-da-razão-de-verossimilhança-likelihood-ratio-test" class="level3" data-number="4.2">
+<h3 data-number="4.2" class="anchored" data-anchor-id="teste-da-razão-de-verossimilhança-likelihood-ratio-test"><span class="header-section-number">4.2</span> Teste da Razão de Verossimilhança (Likelihood Ratio Test)</h3>
+<p>Compara o modelo ajustado com um modelo reduzido (ou nulo):</p>
+<p><span class="math display">\[H_0: Mod_{maior} = Mod_{menor} \qquad RV = 2(l_{maior} - l_{menor}) \sim \chi^2_{(l-k)}\]</span></p>
+<p>É o teste recomendado para comparar modelos aninhados (ver <a href="#sec-aninhados" class="quarto-xref">Seção&nbsp;7</a>), e costuma ser mais robusto que o teste de Wald quando o número de observações é pequeno. Em amostras grandes, os dois testes tendem a convergir para resultados assintoticamente equivalentes.</p>
+</section>
+<section id="teste-de-escore-score-log-rank-test" class="level3" data-number="4.3">
+<h3 data-number="4.3" class="anchored" data-anchor-id="teste-de-escore-score-log-rank-test"><span class="header-section-number">4.3</span> Teste de Escore (Score / log-rank test)</h3>
+<p>Baseado na derivada da log-verossimilhança parcial avaliada em <span class="math inline">\(\beta = 0\)</span>. Também segue distribuição normal padrão sob a hipótese nula. Quando o modelo tem apenas uma covariável categórica, esse teste coincide com o teste log-rank já conhecido da análise não paramétrica (Kaplan-Meier).</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Dica</span>Quando os três testes divergem
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>É comum, especialmente perto do limiar de significância (p ≈ 0,05), que os três testes apontem conclusões ligeiramente diferentes. A recomendação de Hosmer, Lemeshow e May é <strong>reportar todos os resultados obtidos</strong>, permitindo que o leitor avalie as diferentes conclusões dentro do contexto de seus próprios objetivos de pesquisa.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="intervalo-de-confiança-e-o-valor-de-nulidade" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="intervalo-de-confiança-e-o-valor-de-nulidade"><span class="header-section-number">5</span> Intervalo de confiança e o valor de nulidade</h2>
+<p>Para o hazard ratio, o <strong>valor de nulidade é sempre 1</strong> — porque HR = 1 significa nenhuma diferença de risco entre os grupos comparados. As hipóteses do teste são:</p>
+<p><span class="math display">\[H_0: HR = 1 \text{ (sem efeito)} \qquad H_1: HR \ne 1 \text{ (há efeito)}\]</span></p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Importante</span>Regra prática
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Se o intervalo de confiança de 95% do HR <strong>não contém o valor 1</strong>, rejeita-se <span class="math inline">\(H_0\)</span> com 95% de confiança — equivalente a p &lt; 0,05 no teste de Wald. Se o intervalo <strong>contém o 1</strong>, a variável não é considerada significativa.</p>
+</div>
+</div>
+<p>No exemplo do curso, os intervalos de <code>idade</code> (0,9521 – 1,006) e <code>sexo2</code> (0,3657 – 1,288) contêm o valor 1 — coerente com os p-valores de 0,122 e 0,241 vistos anteriormente. São duas formas diferentes de chegar exatamente à mesma conclusão.</p>
+</section>
+<section id="concordância-avaliando-o-poder-discriminatório-do-modelo" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="concordância-avaliando-o-poder-discriminatório-do-modelo"><span class="header-section-number">6</span> Concordância: avaliando o poder discriminatório do modelo</h2>
+<p>A concordância é uma medida global de ajuste usada quando o objetivo do modelo é <strong>predizer risco</strong>. Ela avalia a capacidade do modelo de ordenar corretamente os indivíduos por risco — de forma análoga à área sob a curva ROC (AUC) em regressão logística.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Concordância (c)</th>
+<th>Poder discriminatório</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>0,3 &lt; c &lt; 0,4</td>
+<td>Baixo</td>
+</tr>
+<tr class="even">
+<td>c = 0,5</td>
+<td>Equivalente ao acaso</td>
+</tr>
+<tr class="odd">
+<td>0,6 ≤ c &lt; 0,7</td>
+<td>Comum</td>
+</tr>
+<tr class="even">
+<td>0,7 ≤ c &lt; 0,8</td>
+<td>Muito bom</td>
+</tr>
+<tr class="odd">
+<td>0,8 ≤ c &lt; 0,9</td>
+<td>Excelente</td>
+</tr>
+</tbody>
+</table>
+<p>No exemplo do curso, c = 0,568 está bem próximo de 0,5 (chute aleatório) — o poder discriminatório do modelo é <strong>fraco</strong>.</p>
+</section>
+<section id="sec-aninhados" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="sec-aninhados"><span class="header-section-number">7</span> Comparando modelos aninhados</h2>
+<p>Para decidir se novas covariáveis melhoram significativamente o modelo, usa-se o teste da razão de verossimilhança entre modelos aninhados, via <code>anova()</code>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>mod2 <span class="ot">&lt;-</span> <span class="fu">coxph</span>(y <span class="sc">~</span> idade <span class="sc">+</span> sexo <span class="sc">+</span> fase, <span class="at">data =</span> tmo)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>mod3 <span class="ot">&lt;-</span> <span class="fu">coxph</span>(y <span class="sc">~</span> idade <span class="sc">+</span> sexo <span class="sc">+</span> fase <span class="sc">+</span> deag, <span class="at">data =</span> tmo)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>mod4 <span class="ot">&lt;-</span> <span class="fu">coxph</span>(y <span class="sc">~</span> idade <span class="sc">+</span> sexo <span class="sc">+</span> fase <span class="sc">+</span> deag <span class="sc">+</span> decr, <span class="at">data =</span> tmo)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">anova</span>(mod1, mod2, mod3, mod4, <span class="at">test =</span> <span class="st">"Chisq"</span>)</span></code></pre></div><button title="Copiar para a área de transferência" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<pre><code>Analysis of Deviance Table
+Cox model: response is y
+Model 1: ~ idade + sexo
+Model 2: ~ idade + sexo + fase
+Model 3: ~ idade + sexo + fase + deag
+Model 4: ~ idade + sexo + fase + deag + decr
+   loglik  Chisq Df P(&gt;|Chi|)    
+1 -201.94                        
+2 -194.70 14.486  2 0.0007152 ***
+3 -188.15 13.109  1 0.0002939 ***
+4 -183.07 10.152  1 0.0014413 ** </code></pre>
+<p>Cuidados importantes ao usar essa comparação:</p>
+<ul>
+<li>Os modelos precisam ser <strong>aninhados</strong> (um contido no outro) e ajustados sobre o <strong>mesmo conjunto de observações</strong> (mesmo <code>n</code>).</li>
+<li>Não é possível comparar diretamente modelos estratificados com modelos não estratificados.</li>
+<li>Se houver valores faltantes em alguma covariável, os modelos podem perder comparabilidade — use <code>complete.cases()</code> para garantir que todos sejam ajustados sobre exatamente as mesmas observações.</li>
+<li>Em amostras pequenas, a análise pela função desvio (razão de verossimilhança) tende a ser mais robusta do que o teste de Wald equivalente.</li>
+</ul>
+</section>
+<section id="roteiro-rápido-de-leitura" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="roteiro-rápido-de-leitura"><span class="header-section-number">8</span> Roteiro rápido de leitura</h2>
+<p>Para qualquer saída de <code>summary(coxph(...))</code>, siga esta sequência:</p>
+<ol type="1">
+<li>Confirme <code>n</code> e <code>number of events</code> — a amostra está completa, sem perda inesperada de observações?</li>
+<li>Para cada covariável, leia <code>exp(coef)</code> — é o hazard ratio: acima de 1 indica risco, abaixo de 1 indica proteção.</li>
+<li>Verifique a significância pelo teste de Wald (<code>z</code> / <code>Pr(&gt;|z|)</code>) ou pelo intervalo de confiança de 95% do HR — lembrando que o valor de nulidade é 1.</li>
+<li>Avalie a <strong>Concordância</strong>, usando a tabela de referência acima, para julgar o poder discriminatório do modelo.</li>
+<li>Observe os testes globais (razão de verossimilhança, Wald, escore/log-rank) — o modelo completo é melhor do que o modelo nulo?</li>
+<li>Ao comparar modelos aninhados, use <code>anova(..., test = "Chisq")</code> — e confirme que todos foram ajustados sobre o mesmo <code>n</code>.</li>
+<li>Antes de reportar os resultados, verifique o pressuposto de riscos proporcionais (resíduos de Schoenfeld).</li>
+</ol>
+</section>
+<section id="referências" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="referências"><span class="header-section-number">9</span> Referências</h2>
+<p><strong>Disciplina:</strong> Introdução à Análise de Sobrevivência — 2026</p>
+<p>CARVALHO, Marilia Sá; ANDREOZZI, Valeska Lima; CODEÇO, Claudia Torres; BARBOSA, Maria Tereza Serrano; SHIMAKURA, Silvia Emiko; CAMPOS, Dayse. <strong>Análise de sobrevivência: teoria e aplicações em saúde</strong>. 2. ed.&nbsp;Rio de Janeiro: Editora Fiocruz, 2011.</p>
+<p>COLOSIMO, Enrico Antônio; GIOLO, Suely Ruiz. <strong>Análise de sobrevivência aplicada</strong>. São Paulo: Edgard Blücher, 2006.</p>
+<p>FREITAS, Marta Afonso; COLOSIMO, Enrico Antônio. <strong>Confiabilidade: análise de tempo de falha e testes de vida acelerados</strong>. Belo Horizonte: Fundação Christiano Ottoni, Escola de Engenharia da UFMG, 1997.</p>
+<p>HOSMER, David W.; LEMESHOW, Stanley; MAY, Susanne. <strong>Applied survival analysis: regression modeling of time-to-event data</strong>. 2. ed.&nbsp;Hoboken, NJ: John Wiley &amp; Sons, 2008. (Wiley Series in Probability and Statistics).</p>
+<hr>
+<p>Anderson Lineu</p>
+<p>Contato: <a href="mailto:andersonlineu@gmail.com">andersonlineu@gmail.com</a></p>
+<p>GitHub: <a href="https://github.com/andersonlineu" class="uri">https://github.com/andersonlineu</a></p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copiada");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copiada");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
